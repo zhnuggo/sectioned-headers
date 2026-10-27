@@ -1,16 +1,16 @@
 {
-  "name": "@zhnuggo/PACKAGENAME",
+  "name": "@zhnuggo/sectioned-headers",
   "version": "1.0.0",
-  "description": "PACKAGEDESC",
-  "homepage": "https://github.com/zhnuggo/PACKAGENAME",
+  "description": "Separates text into sections using a customizable header format.",
+  "homepage": "https://github.com/zhnuggo/sectioned-headers",
   "bugs": {
-    "url": "https://github.com/zhnuggo/PACKAGENAME/issues"
+    "url": "https://github.com/zhnuggo/sectioned-headers/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/zhnuggo/PACKAGENAME.git"
+    "url": "git+https://github.com/zhnuggo/sectioned-headers.git"
   },
-  "files": ["index.js"],
+  "files": ["index.js", "index.d.ts"],
   "types": "index.d.ts",
   "publishConfig": {
     "access": "public"
