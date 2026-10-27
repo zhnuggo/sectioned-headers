@@ -211,6 +211,66 @@ describe('parse()', () => {
                 sections({ 'a ">" b': 'two' })
             );
         });
+
+        it('uses the default quotes when quotes is undefined', () => {
+            expect(parse('<a ">" b>text', { ...angle, quotes: undefined })).to.deep.equal(
+                sections({ 'a ">" b': 'text' })
+            );
+        });
+    });
+
+    describe('quotes: null', () => {
+        const noQuotes = { ...angle, quotes: null };
+
+        it('does not protect close inside double quotes', () => {
+            expect(parse('<a ">" b>text', noQuotes)).to.deep.equal(
+                sections({ 'a "': '" b>text' })
+            );
+        });
+
+        it('does not protect close inside single quotes', () => {
+            expect(parse('<a \'>\' b>text', noQuotes)).to.deep.equal(
+                sections({ 'a \'': '\' b>text' })
+            );
+        });
+
+        it('treats quote characters as ordinary header text', () => {
+            expect(parse('<don\'t>text', noQuotes)).to.deep.equal(
+                sections({ 'don\'t': 'text' })
+            );
+            expect(parse('<say "hi">text', noQuotes)).to.deep.equal(
+                sections({ 'say "hi"': 'text' })
+            );
+        });
+
+        it('does not let an unterminated quote swallow later headers', () => {
+            // With quote handling on, the unmatched quote is literal as well, so
+            // this checks that disabling quotes never changes the outcome here.
+            expect(parse('<it\'s>\n1\n<b>\n2', noQuotes)).to.deep.equal(
+                sections({ 'it\'s': '1\n', b: '2' })
+            );
+        });
+
+        it('still honors escapes', () => {
+            expect(parse('<a \\> b>text', noQuotes)).to.deep.equal(
+                sections({ 'a \\> b': 'text' })
+            );
+        });
+
+        it('still honors a custom escape', () => {
+            expect(parse('<a ^> b>text', { ...noQuotes, escape: '^' })).to.deep.equal(
+                sections({ 'a ^> b': 'text' })
+            );
+        });
+
+        it('does not throw or match the text "null"', () => {
+            expect(parse('<a>\nnull value null', noQuotes)).to.deep.equal(
+                sections({ a: 'null value null' })
+            );
+            expect(parse('<anullb>\nx', noQuotes)).to.deep.equal(
+                sections({ anullb: 'x' })
+            );
+        });
     });
 
     describe('escapes', () => {
@@ -247,6 +307,91 @@ describe('parse()', () => {
             expect(parse('<a \\> b>two', opts)).to.deep.equal(
                 sections({ 'a \\> b': 'two' })
             );
+        });
+
+        it('uses the default escape when escape is undefined', () => {
+            expect(parse('<a \\> b>text', { ...angle, escape: undefined })).to.deep.equal(
+                sections({ 'a \\> b': 'text' })
+            );
+        });
+    });
+
+    describe('escape: null', () => {
+        const noEscape = { ...angle, escape: null };
+
+        it('does not protect an otherwise escaped close', () => {
+            expect(parse('<a \\> b>text', noEscape)).to.deep.equal(
+                sections({ 'a \\': ' b>text' })
+            );
+        });
+
+        it('lets a backslash-preceded quote open a quoted section', () => {
+            // The backslash is ordinary, so the quote opens and protects ">".
+            expect(parse('<a \\"x>y" b>text', noEscape)).to.deep.equal(
+                sections({ 'a \\"x>y" b': 'text' })
+            );
+        });
+
+        it('does not escape the closing quote inside a quoted section', () => {
+            // The backslash does not escape the quote, so it ends the quoted
+            // section and the following ">" closes the header.
+            expect(parse('<a "x\\">y" b>text', noEscape)).to.deep.equal(
+                sections({ 'a "x\\"': 'y" b>text' })
+            );
+        });
+
+        it('still honors quotes', () => {
+            expect(parse('<a ">" b>text', noEscape)).to.deep.equal(
+                sections({ 'a ">" b': 'text' })
+            );
+        });
+
+        it('still honors custom quotes', () => {
+            expect(parse('<a `>` b>text', { ...noEscape, quotes: '`' })).to.deep.equal(
+                sections({ 'a `>` b': 'text' })
+            );
+        });
+
+        it('does not throw or match the text "null"', () => {
+            expect(parse('<a>\nnull value null', noEscape)).to.deep.equal(
+                sections({ a: 'null value null' })
+            );
+            expect(parse('<anullb>\nx', noEscape)).to.deep.equal(
+                sections({ anullb: 'x' })
+            );
+        });
+    });
+
+    describe('quotes: null and escape: null together', () => {
+        const plain = { ...angle, quotes: null, escape: null };
+
+        it('ends the header at the first close', () => {
+            expect(parse('<a ">" b>text', plain)).to.deep.equal(
+                sections({ 'a "': '" b>text' })
+            );
+            expect(parse('<a \\> b>text', plain)).to.deep.equal(
+                sections({ 'a \\': ' b>text' })
+            );
+        });
+
+        it('parses the spec example unchanged', () => {
+            const text = '<font settings>\nsize: 12pt\n\n<content>\nHello';
+            expect(parse(text, plain)).to.deep.equal(
+                sections({ 'font settings': 'size: 12pt\n\n', content: 'Hello' })
+            );
+        });
+
+        it('still discards unclosed opens as plain text', () => {
+            expect(parse('<a>\n1 < 2', plain).get('a')).to.equal('1 < 2');
+            expect(parse('<a\nbody', plain).size).to.equal(0);
+        });
+
+        it('works with regex open and close', () => {
+            const text = '# Intro\nit\'s "fine"\n## Details\nworld';
+            expect(parse(text, { open: /#+\s*/, close: /\n/, quotes: null, escape: null }))
+                .to.deep.equal(
+                    sections({ Intro: 'it\'s "fine"\n', Details: 'world' })
+                );
         });
     });
 

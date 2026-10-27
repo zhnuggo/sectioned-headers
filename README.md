@@ -1,6 +1,6 @@
 # Sectioned Headers
 ![Tests](https://img.shields.io/badge/tests-Mocha_+_Chai-saddlebrown?logo=mocha&logoColor=white&style=for-the-badge)
-![Tests](https://img.shields.io/badge/passed-44_/_44-brightgreen?logo=testcafe&logoColor=white&style=for-the-badge)
+![Tests](https://img.shields.io/badge/passed-63_/_63-brightgreen?logo=testcafe&logoColor=white&style=for-the-badge)
 <br>
 ![Dependencies](https://img.shields.io/badge/dependencies-none-brightgreen?style=for-the-badge)
 
@@ -53,13 +53,16 @@ Returns a `Map<string, string>` where each key is a header's text (without the d
 | -------- | ------------------ | --------- | ---------------------------------------------------------------------------------------------------- |
 | `open`   | `string \| RegExp` | required  | Marks the start of a header.                                                                         |
 | `close`  | `string \| RegExp` | required  | Marks the end of a header. Ignored when quoted or escaped.                                           |
-| `quotes` | `string \| RegExp` | `/["']/`  | Quote delimiter(s). A `close` between a pair of identical quotes inside a header is ignored.         |
-| `escape` | `string \| RegExp` | `'\\'`    | Escape marker. The character after it is taken literally and cannot act as `close` or as a quote.    |
+| `quotes` | `string \| RegExp \| null ` | `/["']/`  | Quote delimiter(s). A `close` between a pair of identical quotes inside a header is ignored.         |
+| `escape` | `string \| RegExp \| null` | `'\\'`    | Escape marker. The character after it is taken literally and cannot act as `close` or as a quote.    |
 
 Every option accepts either a string or a regular expression:
 
 - A **string** is matched literally. Regex special characters need no escaping, so `'(.*)'` matches exactly those five characters.
 - A **RegExp** is matched as-is at the current position. The `g` and `y` flags are ignored, and zero-length matches never count as a match.
+
+The `quotes` and `escape` options also accept a `null` value, which disables
+checking for them when parsing.
 
 ## Notable Behavior
 
@@ -98,7 +101,13 @@ parse('<a ^> b>text', { open: '<', close: '>', escape: '^' });
 // Map { 'a ^> b' => 'text' }
 ```
 
-When you set `quotes` or `escape`, the defaults no longer apply. To disable one entirely, pass a pattern that never matches, such as `/(?!)/`.
+When you set `quotes` or `escape`, the defaults no longer apply.  
+To disable one entirely, set it to `null`:
+
+```js
+parse('[Stuff\\]\ntext', { open: '[', close: ']', escape: null })
+// Map { 'Stuff\\' => 'text'}
+```
 
 ### Multi-character delimiters
 
@@ -139,5 +148,5 @@ const sections: Sections = parse(text, options); // Map<string, string>
 | Type           | Definition                                                                 |
 | -------------- | -------------------------------------------------------------------------- |
 | `Pattern`      | `string \| RegExp`                                                         |
-| `ParseOptions` | `{ open: Pattern; close: Pattern; quotes?: Pattern; escape?: Pattern }`    |
+| `ParseOptions` | `{ open: Pattern; close: Pattern; quotes?: Pattern \| null; escape?: Pattern \| null }`    |
 | `Sections`     | `Map<string, string>`                                                      |

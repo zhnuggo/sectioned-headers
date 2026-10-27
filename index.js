@@ -17,12 +17,17 @@
  * @property {Pattern} close
  *   Marks the end of a header (e.g. `'>'`). A `close` that is inside quotes
  *   or immediately preceded by an `escape` is ignored.
- * @property {Pattern} [quotes=/["']/]
+ * @property {Pattern | null} [quotes=/["']/]
  *   Quote delimiter(s). Text between a pair of identical quotes inside a
- *   header is protected from being read as `close`.
- * @property {Pattern} [escape='\\']
+ *   header is protected from being read as `close`. Set to `null` to disable
+ *   quote handling entirely, so quote characters have no special meaning.
+ *   Omitting the option (or passing `undefined`) uses the default.
+ * @property {Pattern | null} [escape='\\']
  *   Escape marker. The character that follows it is taken literally and
- *   cannot act as `close` or as a quote.
+ *   cannot act as `close` or as a quote. Set to `null` to disable escape
+ *   handling entirely, so escape characters have no special meaning (this
+ *   includes inside quotes). Omitting the option (or passing `undefined`)
+ *   uses the default.
  */
 
 /**
@@ -53,6 +58,10 @@
  * - An unterminated quote inside a header is treated as a literal character.
  * - Quotes must be closed by the same quote that opened them, and escapes
  *   are honored inside quotes.
+ * - Passing `quotes: null` disables quote handling, and `escape: null`
+ *   disables escape handling. The two are independent: with `escape: null`,
+ *   quotes still protect `close` but a quote can no longer be escaped; with
+ *   `quotes: null`, escapes still protect `close` but nothing is quoted.
  *
  * @param {string} text
  *   The text to parse.
@@ -74,6 +83,11 @@
  * // `close` inside quotes or after an escape does not end the header
  * parse('<a ">" b>text', { open: '<', close: '>' }).get('a ">" b');
  * // => "text"
+ *
+ * @example
+ * // Disable quote handling: the quoted `>` now ends the header
+ * parse('<a ">" b>text', { open: '<', close: '>', quotes: null });
+ * // => Map { 'a "' => '" b>text' }
  */
 export function parse(text, { open, close, quotes = /["']/, escape = '\\' }) {
     const toSticky = (p) =>
@@ -83,11 +97,16 @@ export function parse(text, { open, close, quotes = /["']/, escape = '\\' }) {
 
     const openRe = toSticky(open);
     const closeRe = toSticky(close);
-    const quoteRe = toSticky(quotes);
-    const escapeRe = toSticky(escape);
+    // A `null` option disables that feature: no matcher, so it never matches.
+    const quoteRe = quotes === null ? null : toSticky(quotes);
+    const escapeRe = escape === null ? null : toSticky(escape);
 
     // Returns the matched text at index i (only non-empty matches), else null
     const matchAt = (re, i) => {
+        if (re === null) {
+            return null;
+        }
+
         re.lastIndex = i;
         const m = re.exec(text);
         return m && m[0].length ? m[0] : null;

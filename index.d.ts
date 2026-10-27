@@ -24,19 +24,24 @@ export interface ParseOptions {
 
   /**
    * Quote delimiter(s). Text between a pair of identical quotes inside a
-   * header is protected from being read as `close`.
+   * header is protected from being read as `close`. Set to `null` to disable
+   * quote handling entirely, so quote characters have no special meaning.
+   * Omitting the option (or passing `undefined`) uses the default.
    *
    * @default /["']/
    */
-  quotes?: Pattern;
+  quotes?: Pattern | null;
 
   /**
    * Escape marker. The character that follows it is taken literally and
-   * cannot act as `close` or as a quote.
+   * cannot act as `close` or as a quote. Set to `null` to disable escape
+   * handling entirely, so escape characters have no special meaning (this
+   * includes inside quotes). Omitting the option (or passing `undefined`)
+   * uses the default.
    *
    * @default '\\'
    */
-  escape?: Pattern;
+  escape?: Pattern | null;
 }
 
 /**
@@ -53,6 +58,9 @@ export type Sections = Map<string, string>;
  * If the same header appears more than once, the later section's text
  * replaces the earlier one, and the entry keeps the position of the
  * header's first appearance.
+ *
+ * Passing `quotes: null` disables quote handling, and `escape: null`
+ * disables escape handling. The two are independent of each other.
  *
  * @param text    The text to parse.
  * @param options Header delimiters and quoting/escaping rules.
