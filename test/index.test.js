@@ -4,7 +4,16 @@ import { parse } from '../index.js';
 const angle = { open: '<', close: '>' };
 
 // Builds the expected Map from a plain object (for readable assertions).
-const sections = (obj) => new Map(Object.entries(obj));
+// If `preamble` is given, it is added first under the `null` key.
+const sections = (obj, preamble) => {
+    const entries = Object.entries(obj);
+
+    if (preamble !== undefined) {
+        entries.unshift([null, preamble]);
+    }
+
+    return new Map(entries);
+};
 
 describe('parse()', () => {
     describe('basic behavior', () => {
@@ -39,13 +48,9 @@ describe('parse()', () => {
             expect(result.size).to.equal(0);
         });
 
-        it('returns an empty Map when there are no headers', () => {
-            expect(parse('just some plain text\nwith lines', angle).size).to.equal(0);
-        });
-
-        it('discards text before the first header', () => {
-            expect(parse('preamble\nmore preamble\n<a>\nbody', angle)).to.deep.equal(
-                sections({ a: 'body' })
+        it('stores all text under null when there are no headers', () => {
+            expect(parse('just some plain text\nwith lines', angle)).to.deep.equal(
+                sections({}, 'just some plain text\nwith lines')
             );
         });
 
@@ -68,6 +73,77 @@ describe('parse()', () => {
         it('allows headers to span multiple lines', () => {
             expect(parse('<multi\nline>\nbody', angle)).to.deep.equal(
                 sections({ 'multi\nline': 'body' })
+            );
+        });
+    });
+
+    describe('text before the first header', () => {
+        it('stores it under the null key', () => {
+            const result = parse('preamble\nmore preamble\n<a>\nbody', angle);
+            expect(result.get(null)).to.equal('preamble\nmore preamble\n');
+            expect(result.get('a')).to.equal('body');
+            expect(result.size).to.equal(2);
+        });
+
+        it('matches the expected Map exactly', () => {
+            expect(parse('intro\n<a>\nbody', angle)).to.deep.equal(
+                sections({ a: 'body' }, 'intro\n')
+            );
+        });
+
+        it('does not apply the post-header line break rule to it', () => {
+            expect(parse('\n\nintro\n<a>\nx', angle).get(null)).to.equal('\n\nintro\n');
+        });
+
+        it('preserves whitespace-only text', () => {
+            expect(parse('  \n<a>\nx', angle).get(null)).to.equal('  \n');
+        });
+
+        it('has no null entry when the text starts with a header', () => {
+            const result = parse('<a>\nbody', angle);
+            expect(result.has(null)).to.equal(false);
+            expect(result.size).to.equal(1);
+        });
+
+        it('has no null entry for empty text', () => {
+            const result = parse('', angle);
+            expect(result.has(null)).to.equal(false);
+            expect(result.size).to.equal(0);
+        });
+
+        it('places the null entry first', () => {
+            const result = parse('intro<b>\n1\n<a>\n2', angle);
+            expect([...result.keys()]).to.deep.equal([null, 'b', 'a']);
+        });
+
+        it('does not collide with an empty header name', () => {
+            const result = parse('intro<>\nbody', angle);
+            expect(result.get(null)).to.equal('intro');
+            expect(result.get('')).to.equal('body');
+            expect(result.size).to.equal(2);
+        });
+
+        it('does not collide with a header named "null"', () => {
+            const result = parse('intro<null>\nbody', angle);
+            expect(result.get(null)).to.equal('intro');
+            expect(result.get('null')).to.equal('body');
+        });
+
+        it('does not apply to text after a header', () => {
+            const result = parse('<a>\n1\n<b>\n2', angle);
+            expect(result.has(null)).to.equal(false);
+        });
+
+        it('stores text with an unclosed open under null when there are no headers', () => {
+            expect(parse('<a\nbody', angle)).to.deep.equal(
+                sections({}, '<a\nbody')
+            );
+        });
+
+        it('works with regex delimiters', () => {
+            const text = 'intro\n# Heading\nbody';
+            expect(parse(text, { open: /#+\s*/, close: /\n/ })).to.deep.equal(
+                sections({ Heading: 'body' }, 'intro\n')
             );
         });
     });
@@ -154,8 +230,10 @@ describe('parse()', () => {
             );
         });
 
-        it('returns nothing when the only open has no close', () => {
-            expect(parse('<a\nbody', angle).size).to.equal(0);
+        it('stores everything under null when the only open has no close', () => {
+            const result = parse('<a\nbody', angle);
+            expect(result.size).to.equal(1);
+            expect(result.get(null)).to.equal('<a\nbody');
         });
     });
 
@@ -383,7 +461,7 @@ describe('parse()', () => {
 
         it('still discards unclosed opens as plain text', () => {
             expect(parse('<a>\n1 < 2', plain).get('a')).to.equal('1 < 2');
-            expect(parse('<a\nbody', plain).size).to.equal(0);
+            expect(parse('<a\nbody', plain)).to.deep.equal(sections({}, '<a\nbody'));
         });
 
         it('works with regex open and close', () => {

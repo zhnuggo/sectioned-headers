@@ -1,8 +1,9 @@
 # Sectioned Headers
 ![Tests](https://img.shields.io/badge/tests-Mocha_+_Chai-saddlebrown?logo=mocha&logoColor=white&style=for-the-badge)
-![Tests](https://img.shields.io/badge/passed-63_/_63-brightgreen?logo=testcafe&logoColor=white&style=for-the-badge)
+![Passed](https://img.shields.io/badge/passed-74_/_74-brightgreen?logo=testcafe&logoColor=white&style=for-the-badge)
 <br>
 ![Dependencies](https://img.shields.io/badge/dependencies-none-brightgreen?style=for-the-badge)
+[![NPM version](https://img.shields.io/npm/v/@zhnuggo/sectioned-headers.svg?style=for-the-badge)](https://www.npmjs.com/package/@zhnuggo/sectioned-headers)
 
 Separates text into sections using a customizable header format.
 
@@ -67,7 +68,9 @@ checking for them when parsing.
 ## Notable Behavior
 
 - Headers may span multiple lines.
-- Text before the first header is discarded.
+- Text before the first header is stored under a `null` header, which is the
+first element in the Map.<br>Text without any headers just results in
+`Map { null => <text> }`.
 - A line break directly after a header is dropped.<br>All other whitespace is preserved, so trailing blank lines stay in the section.
 - For duplicate headers: the later section's text replaces the earlier one, and the entry keeps the position of the header's first appearance.
 - The `parse` function returns `Map`, not an `Object`.
@@ -142,11 +145,11 @@ Type declarations are included.
 import { parse, type ParseOptions, type Sections } from '@zhnuggo/sectioned-headers';
 
 const options: ParseOptions = { open: '<', close: '>' };
-const sections: Sections = parse(text, options); // Map<string, string>
+const sections: Sections = parse(text, options); // Map<string|null, string>
 ```
 
 | Type           | Definition                                                                 |
 | -------------- | -------------------------------------------------------------------------- |
 | `Pattern`      | `string \| RegExp`                                                         |
 | `ParseOptions` | `{ open: Pattern; close: Pattern; quotes?: Pattern \| null; escape?: Pattern \| null }`    |
-| `Sections`     | `Map<string, string>`                                                      |
+| `Sections`     | `Map<string \| null, string>`                                                      |

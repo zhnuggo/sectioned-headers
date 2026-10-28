@@ -47,10 +47,12 @@ export interface ParseOptions {
 /**
  * Parsed sections: each key is a header's text, each value is the text
  * that follows that header up to the next header (or the end of input).
- * Entries are ordered by the first appearance of each header. Because this
- * is a `Map`, any string is a safe key (including `__proto__`).
+ * Any text before the first header is stored under the key `null`. Entries
+ * are ordered by the first appearance of each header, so the `null` entry,
+ * when present, comes first. Because this is a `Map`, any string is a safe
+ * key (including `__proto__`), and `null` can never collide with a header.
  */
-export type Sections = Map<string, string>;
+export type Sections = Map<string | null, string>;
 
 /**
  * Splits `text` into sections introduced by headers.
@@ -62,9 +64,15 @@ export type Sections = Map<string, string>;
  * Passing `quotes: null` disables quote handling, and `escape: null`
  * disables escape handling. The two are independent of each other.
  *
+ * Text before the first header is stored under the key `null`, exactly as
+ * written (including whitespace). If there is no such text, there is no
+ * `null` entry. If the text contains no headers at all, the entire text is
+ * stored under `null`.
+ *
  * @param text    The text to parse.
  * @param options Header delimiters and quoting/escaping rules.
- * @returns A `Map` of each header's text to its section text. The map is
- *          empty when no headers are found.
+ * @returns A `Map` of each header's text to its section text, plus a `null`
+ *          entry for any text before the first header. The map is empty
+ *          only when `text` is empty.
  */
 export function parse(text: string, options: ParseOptions): Sections;

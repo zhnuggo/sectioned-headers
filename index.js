@@ -33,10 +33,12 @@
 /**
  * Parsed sections: each key is a header's text, each value is the text
  * that follows that header up to the next header (or the end of input).
- * Entries are ordered by the first appearance of each header. Because this
- * is a `Map`, any string is a safe key (including `__proto__`).
+ * Any text before the first header is stored under the key `null`. Entries
+ * are ordered by the first appearance of each header, so the `null` entry,
+ * when present, comes first. Because this is a `Map`, any string is a safe
+ * key (including `__proto__`), and `null` can never collide with a header.
  *
- * @typedef {Map<string, string>} Sections
+ * @typedef {Map<string | null, string>} Sections
  */
 
 /**
@@ -48,7 +50,10 @@
  * header until the next header or the end of input.
  *
  * Details:
- * - Text before the first header is discarded.
+ * - Text before the first header is stored under the key `null`, exactly as
+ *   written (including whitespace). If there is no such text, there is no
+ *   `null` entry. If the text contains no headers at all, the entire text is
+ *   stored under `null`.
  * - A single line break (`\n` or `\r\n`) directly after a header is dropped;
  *   all other whitespace is preserved.
  * - If the same header appears more than once, the later section's text
@@ -68,8 +73,9 @@
  * @param {ParseOptions} options
  *   Header delimiters and quoting/escaping rules.
  * @returns {Sections}
- *   A `Map` of each header's text to its section text. The map is empty
- *   when no headers are found.
+ *   A `Map` of each header's text to its section text, plus a `null` entry
+ *   for any text before the first header. The map is empty only when
+ *   `text` is empty.
  *
  * @example
  * const sections = parse('<font settings>\nsize: 12pt\n\n<content>\nHello', {
@@ -78,6 +84,11 @@
  * });
  * sections.get('font settings'); // => "size: 12pt\n\n"
  * sections.get('content');       // => "Hello"
+ *
+ * @example
+ * // Text before the first header is stored under the `null` key
+ * parse('Intro text\n<a>\nbody', { open: '<', close: '>' });
+ * // => Map { null => 'Intro text\n', 'a' => 'body' }
  *
  * @example
  * // `close` inside quotes or after an escape does not end the header
@@ -187,13 +198,17 @@ export function parse(text, { open, close, quotes = /["']/, escape = '\\' }) {
     };
 
     const result = new Map();
-    let key = null;       // current section's header
+    let key = null;       // current section's header (null = before first header)
     let bodyStart = 0;    // where the current section's text begins
     let i = 0;
 
     const flush = (end) => {
-        if (key !== null) {
-            result.set(key, text.slice(bodyStart, end));
+        const body = text.slice(bodyStart, end);
+
+        // Header sections are always stored (even when empty). The text before
+        // the first header (key === null) is stored only when it is non-empty.
+        if (key !== null || body.length > 0) {
+            result.set(key, body);
         }
     };
 
